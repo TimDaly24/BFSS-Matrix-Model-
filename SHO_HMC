@@ -1,0 +1,99 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+plt.style.use('bmh')
+bleu = (52/255, 207/255, 235/255)  
+greeen = (165/255, 235/255, 52/255)
+
+# Define the Hamiltonian for a classical harmonic oscillator
+def hamiltonian(x, p):
+    return 0.5 * (x**2 + p**2)
+
+# Define the force function
+def force(x):
+    k = 1
+    return -k * x
+
+# Define the leapfrog integrator
+def leapfrog(x, p, step_size, n_steps):
+    x_new, p_new = x, p
+    for _ in range(n_steps):
+        p_half = p_new + 0.5 * step_size * force(x_new)  # Half-step for momentum
+        x_new = x_new +step_size * p_half       # Full step for position
+        p_new =p_half + 0.5*step_size * force(x_new)  # Half-step for momentum
+    return x_new, p_half
+
+# Monte Carlo parameters
+n_steps = 2000  # Number of Monte Carlo steps
+beta = 1.0  # Inverse temperature
+step_size = 0.5  # Size of the steps in the phase space
+leapfrog_steps = 10  # Number of leapfrog steps
+
+# Initialize position and momentum
+x = 0.0
+p = 0.0
+
+# Arrays to store the points
+proposed_points = []
+accepted_points = []
+
+# Metropolis Monte Carlo algorithm with leapfrog dynamics
+for i in range(n_steps):
+    # Propose a new point
+    p_new = np.random.normal(0, 1/np.sqrt(2))  # Initial momentum kick
+    x_new, p_new = leapfrog(x, p_new, step_size, leapfrog_steps)
+    
+    # Calculate the Hamiltonians
+    H_old = hamiltonian(x, p)
+    H_new = hamiltonian(x_new, p_new)
+    
+    # Acceptance probability
+    if np.random.rand() < np.exp(-beta * (H_new - H_old)):
+        # Accept the new point
+        x, p = x_new, p_new
+        accepted_points.append((x, p))
+    
+    # Store all proposed points
+    proposed_points.append((x_new, p_new))
+
+# Convert to numpy arrays for plotting
+proposed_points = np.array(proposed_points)
+accepted_points = np.array(accepted_points)
+
+# Initial state plot
+fig1, ax1 = plt.subplots()
+ax1.plot(np.cos(np.linspace(0, 2*np.pi, 100)), np.sin(np.linspace(0, 2*np.pi, 100)), 'orange')
+ax1.scatter([x], [p], color=bleu)
+ax1.set_xlim(-2, 2)
+ax1.set_ylim(-2, 2)
+ax1.set_xlabel('Position')
+ax1.set_ylabel('Momentum')
+ax1.set_title('Initial State')
+plt.legend()
+plt.show()
+
+# Intermediate state plot
+fig2, ax2 = plt.subplots()
+intermediate_step = 1000
+intermediate_accepted_points = accepted_points[:intermediate_step]
+ax2.plot(np.cos(np.linspace(0, 2*np.pi, 100)), np.sin(np.linspace(0, 2*np.pi, 100)), 'orange')
+ax2.scatter(intermediate_accepted_points[:, 0], intermediate_accepted_points[:, 1], color=greeen)
+ax2.set_xlim(-2, 2)
+ax2.set_ylim(-2, 2)
+ax2.set_xlabel('Position')
+ax2.set_ylabel('Momentum')
+ax2.set_title(f'After {intermediate_step} Steps')
+plt.show()
+
+# Final state plot
+fig3, ax3 = plt.subplots()
+ax3.plot(np.cos(np.linspace(0, 2*np.pi, 100)), np.sin(np.linspace(0, 2*np.pi, 100)), 'orange')
+ax3.scatter(proposed_points[:, 0], proposed_points[:, 1], color='red', alpha=0.3, label='Proposed')
+ax3.scatter(accepted_points[:, 0], accepted_points[:, 1], color=bleu, alpha=0.6, label='Accepted')
+ax3.set_xlim(-3, 3)
+ax3.set_ylim(-3, 3)
+ax3.set_xlabel('Position')
+ax3.set_ylabel('Momentum')
+ax3.set_title('Final State')
+plt.legend()
+plt.show()
